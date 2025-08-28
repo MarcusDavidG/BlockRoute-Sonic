@@ -1,29 +1,29 @@
 import { Chain } from 'wagmi'
 
-export const liskSepolia = {
-  id: 4202,
-  name: 'Lisk Sepolia',
-  network: 'lisk-sepolia',
+export const sonicBlaze = {
+  id: 57054,
+  name: 'Sonic Blaze Testnet',
+  network: 'sonic-blaze',
   nativeCurrency: {
     decimals: 18,
-    name: 'Ether',
-    symbol: 'ETH',
+    name: 'Sonic',
+    symbol: 'S',
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.sepolia-api.lisk.com'],
+      http: ['https://rpc.blaze.soniclabs.com'],
     },
     public: {
-      http: ['https://rpc.sepolia-api.lisk.com'],
+      http: ['https://rpc.blaze.soniclabs.com'],
     },
   },
   blockExplorers: {
     default: { 
-      name: 'Lisk Explorer', 
-      url: 'https://sepolia-blockscout.lisk.com' 
+      name: 'SonicScan', 
+      url: 'https://testnet.sonicscan.org' 
     },
   },
   testnet: true,
 } as const satisfies Chain
 
-export const SUPPORTED_CHAINS = [liskSepolia]
+export const SUPPORTED_CHAINS = [sonicBlaze]

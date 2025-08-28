@@ -139,6 +139,10 @@ interface IBlockRoute {
         uint256 indexed shipmentId
     );
 
+    event RelayerAdded(address indexed relayer);
+    event RelayerRemoved(address indexed relayer);
+    event GaslessUpdate(uint256 indexed shipmentId, ShipmentStatus status, address indexed relayer);
+
     // Core Functions
     function createShipment(
         string memory productName,
@@ -200,6 +204,16 @@ interface IBlockRoute {
     function revokeRole(
         uint256 shipmentId,
         address account
+    ) external;
+
+    // Relayer Functions
+    function addRelayer(address relayer) external;
+    function removeRelayer(address relayer) external;
+    function isRelayer(address account) external view returns (bool);
+    function updateShipmentStatusGasless(
+        uint256 shipmentId,
+        ShipmentStatus status,
+        string memory notes
     ) external;
 
     // View Functions

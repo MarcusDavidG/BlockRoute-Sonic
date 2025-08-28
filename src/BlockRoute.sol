@@ -10,6 +10,9 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract BlockRoute is IBlockRoute, AccessControl, Pausable, ReentrancyGuard {
     using BlockRouteLib for *;
 
+    // Relayer management
+    mapping(address => bool) private _relayers;
+
     // Role identifiers
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant QUALITY_INSPECTOR_ROLE = keccak256("QUALITY_INSPECTOR_ROLE");
@@ -33,6 +36,41 @@ contract BlockRoute is IBlockRoute, AccessControl, Pausable, ReentrancyGuard {
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
+    }
+
+    // Relayer functions
+    function addRelayer(address relayer) external onlyRole(ADMIN_ROLE) {
+        require(relayer != address(0), "Invalid relayer address");
+        _relayers[relayer] = true;
+        emit RelayerAdded(relayer);
+    }
+
+    function removeRelayer(address relayer) external onlyRole(ADMIN_ROLE) {
+        require(_relayers[relayer], "Relayer not found");
+        _relayers[relayer] = false;
+        emit RelayerRemoved(relayer);
+    }
+
+    function isRelayer(address account) external view returns (bool) {
+        return _relayers[account];
+    }
+
+    function updateShipmentStatusGasless(
+        uint256 shipmentId,
+        ShipmentStatus status,
+        string memory notes
+    ) external {
+        require(_relayers[msg.sender], "Not a relayer");
+        require(shipmentId > 0 && shipmentId <= _shipmentCounter, "Invalid shipment ID");
+        
+        Shipment storage shipment = _shipments[shipmentId];
+        require(BlockRouteLib.validateStatusTransition(shipment.status, status), "Invalid status transition");
+
+        shipment.status = status;
+        shipment.updatedAt = block.timestamp;
+
+        emit ShipmentStatusUpdated(shipmentId, status, notes);
+        emit GaslessUpdate(shipmentId, status, msg.sender);
     }
 
     // Modifiers

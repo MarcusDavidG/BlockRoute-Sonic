@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Navbar } from './components/shared/Navbar'
 import { Footer } from './components/shared/Footer'
+import { FeeMBadge } from './components/shared/FeeMBadge'
 import { Suspense, lazy } from 'react'
 
 // Import Home component directly since it's the main landing page
@@ -43,6 +44,7 @@ function App() {
           </Suspense>
         </main>
         <Footer />
+        <FeeMBadge />
       </div>
     </Router>
   )

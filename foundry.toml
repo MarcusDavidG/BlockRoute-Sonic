@@ -11,9 +11,12 @@ via_ir = true
 
 [rpc_endpoints]
 lisk_sepolia = "https://rpc.sepolia-api.lisk.com"
+sonic_blaze = "https://rpc.blaze.soniclabs.com"
 
 [etherscan]
 lisk_sepolia = { key = "123", url = "https://sepolia-blockscout.lisk.com/api" }
+sonic_blaze = { key = "123", url = "https://testnet.sonicscan.org/api" }
 
 [chains]
 4202 = "lisk_sepolia"
+57054 = "sonic_blaze"
