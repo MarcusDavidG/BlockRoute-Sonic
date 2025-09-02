@@ -23,9 +23,11 @@
 - [x] Create FeeM information component
 
 ### Testing
-- [ ] Test deployment to Sonic Blaze Testnet
-- [ ] Verify FeeM functionality
-- [ ] Test contract interactions on Sonic Blaze
+- [x] Test deployment to Sonic Blaze Testnet
+- [x] Verify FeeM functionality
+- [x] Test contract interactions on Sonic Blaze
+- [x] Update frontend with deployed contract address
+- [x] Verify wallet connection works with Sonic Blaze
 
 ## 📋 Remaining Tasks
 
