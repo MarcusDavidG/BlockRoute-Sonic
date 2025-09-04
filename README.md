@@ -648,8 +648,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Marcus David G.**
 - GitHub: [@MarcusDavidG](https://github.com/MarcusDavidG)
-- LinkedIn: [Your LinkedIn Profile]
-- Email: [your.email@example.com]
+- LinkedIn: https://www.linkedin.com/in/marcus-david-678751240
+- Email: davidmarcus827@gmail.com
 - Project Link: [https://github.com/MarcusDavidG/Block-Route](https://github.com/MarcusDavidG/Block-Route)
 
 ### Live Deployment
