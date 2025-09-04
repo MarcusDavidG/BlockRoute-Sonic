@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useBlockRoute } from '../../hooks/useBlockRoute'
 import { ShipmentStatus, type Location } from '../../config/contracts'
@@ -16,21 +16,7 @@ export default function TrackShipment() {
 
   const shipment = useShipment(validShipmentId ?? BigInt(0))
   const transitHistory = useTransitHistory(validShipmentId ?? BigInt(0))
-
-  // State to trigger refetch for polling
-  const [refreshToggle, setRefreshToggle] = useState(false)
-
-  // Poll transit history every 10 seconds
-  useEffect(() => {
-    if (!validShipmentId) return
-    const interval = setInterval(() => {
-      setRefreshToggle((prev) => !prev)
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [validShipmentId])
-
-  // Refetch transit history when refreshToggle changes
-  const transitHistoryData = useTransitHistory(validShipmentId ?? BigInt(0), { enabled: refreshToggle }).data || []
+  const transitHistoryData = transitHistory.data || []
 
   if (!shipmentId || !validShipmentId) {
     return (
