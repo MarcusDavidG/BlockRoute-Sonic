@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useAddress } from '@thirdweb-dev/react'
 import { WalletButton } from '../../components/shared/ConnectWallet'
 import { useNavigate } from 'react-router-dom'
 import { useBlockRoute } from '../../hooks/useBlockRoute'
@@ -23,9 +23,13 @@ interface FormData {
 
 export default function CreateShipment() {
   const navigate = useNavigate()
-  const { address } = useAccount()
-  const { useCreateShipment } = useBlockRoute()
+  const address = useAddress()
+  const blockRoute = useBlockRoute()
+  const { mutateAsync: createShipment } = blockRoute.useCreateShipment()
   const [formTouched, setFormTouched] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<FormData>({
     productName: '',
     description: '',
@@ -59,43 +63,39 @@ export default function CreateShipment() {
   )
 
   const getContractArgs = () => {
-    if (!address || !isFormValid) return undefined
+    if (!address || !isFormValid) return null
 
     // Use current timestamp for origin and destination locations
     const currentTimestamp = BigInt(Math.floor(Date.now() / 1000))
-    
-    const args = [
-      formData.productName,
-      formData.description,
-      address,
-      address,
-      address,
-      {
-        latitude: formData.origin.latitude,
-        longitude: formData.origin.longitude,
-        name: formData.origin.name,
-        timestamp: currentTimestamp,
-        updatedBy: address
-      },
-      {
-        latitude: formData.destination.latitude,
-        longitude: formData.destination.longitude,
-        name: formData.destination.name,
-        timestamp: currentTimestamp,
-        updatedBy: address
-      },
-      BigInt(new Date(formData.arrivesOn).getTime() / 1000),
-      formData.isTemperatureSensitive,
-      formData.isHumiditySensitive,
-      "0x0000000000000000000000000000000000000000000000000000000000000001"
-    ] as const
 
-    return args
+    return {
+      args: [
+        formData.productName,
+        formData.description,
+        address, // supplier
+        address, // carrier
+        address, // receiver
+        {
+          latitude: formData.origin.latitude,
+          longitude: formData.origin.longitude,
+          name: formData.origin.name,
+          timestamp: currentTimestamp,
+          updatedBy: address
+        },
+        {
+          latitude: formData.destination.latitude,
+          longitude: formData.destination.longitude,
+          name: formData.destination.name,
+          timestamp: currentTimestamp,
+          updatedBy: address
+        },
+        BigInt(new Date(formData.arrivesOn).getTime() / 1000), // estimatedDeliveryDate
+        formData.isTemperatureSensitive,
+        formData.isHumiditySensitive,
+        "0x0000000000000000000000000000000000000000000000000000000000000001" // documentsHash
+      ]
+    }
   }
-
-  const { write, isLoading, isSuccess, error } = useCreateShipment(
-    formTouched && isFormValid ? getContractArgs() : undefined
-  )
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target as HTMLInputElement
@@ -124,20 +124,28 @@ export default function CreateShipment() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!address || !write || !isFormValid) return
+    if (!address || !isFormValid) return
+
+    setIsLoading(true)
+    setError(null)
 
     try {
-      await write()
-    } catch (err) {
+      const args = getContractArgs()
+      if (args && createShipment) {
+        await createShipment(args)
+        setIsSuccess(true)
+        setTimeout(() => {
+          navigate('/dashboard')
+        }, 2000)
+      } else {
+        setError('Contract not initialized. Please check your wallet connection.')
+      }
+    } catch (err: unknown) {
       console.error('Failed to create shipment:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create shipment')
+    } finally {
+      setIsLoading(false)
     }
-  }
-
-  // Redirect to dashboard after successful creation
-  if (isSuccess) {
-    setTimeout(() => {
-      navigate('/dashboard')
-    }, 2000)
   }
 
   if (!address) {
@@ -166,7 +174,7 @@ export default function CreateShipment() {
 
           {formTouched && isFormValid && error && (
             <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 rounded">
-              Error: {error.message}
+              Error: {error}
             </div>
           )}
 
@@ -383,11 +391,11 @@ export default function CreateShipment() {
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full bg-orange-500 text-white p-3 rounded font-bold 
+            <button
+              type="submit"
+              className="w-full bg-orange-500 text-white p-3 rounded font-bold
                        hover:bg-orange-600 transition-colors disabled:bg-gray-400"
-              disabled={isLoading || !write || !isFormValid}
+              disabled={isLoading || !isFormValid}
             >
               {isLoading ? 'Creating Shipment...' : 'Create Shipment'}
             </button>

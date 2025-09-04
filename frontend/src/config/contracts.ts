@@ -1,6 +1,6 @@
 import { type Address } from 'viem'
 
-export const BLOCKROUTE_ADDRESS = '0xa4e64aabcae48a5f4c45d84dd2493b9fb3f81d84' as const
+export const BLOCKROUTE_ADDRESS = '0x2078b1E35371FF04c321F81c61d8e5d580bc689C' as const
 
 export enum ShipmentStatus {
   Created,

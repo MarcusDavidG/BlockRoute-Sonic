@@ -1,6 +1,7 @@
 import { useBlockRoute } from '../../hooks/useBlockRoute'
 import { WalletButton } from '../../components/shared/ConnectWallet'
 import { ShipmentStatus, type Shipment } from '../../config/contracts'
+import { Link } from 'react-router-dom'
 
 function getStatusColor(status: ShipmentStatus): string {
   switch (status) {
@@ -45,13 +46,20 @@ export default function Dashboard() {
   const isLoading = [shipment1, shipment2, shipment3, shipment4, shipment5]
     .some(s => s.isLoading)
 
-  const shipments = [
+  // Fix: Convert BigInt to string for react-query serialization
+  const shipmentsProcessed = [
     shipment1.data,
     shipment2.data,
     shipment3.data,
     shipment4.data,
     shipment5.data
-  ].filter((s): s is Shipment => Boolean(s))
+  ].filter((s): s is Shipment => Boolean(s)).map(shipment => ({
+    ...shipment,
+    id: shipment.id.toString(),
+    estimatedDeliveryDate: shipment.estimatedDeliveryDate.toString(),
+  }))
+
+  const shipments = shipmentsProcessed
 
   if (!address) {
     return (
@@ -91,19 +99,27 @@ export default function Dashboard() {
               </div>
             ) : shipments.length > 0 ? (
               shipments.map((shipment) => (
-                <div 
+                <div
                   key={shipment.id.toString()}
                   className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-lg"
                 >
-                  <div>
+                  <div className="flex-1">
                     <h4 className="font-semibold">{shipment.productName}</h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       From: {truncateAddress(shipment.supplier)} To: {truncateAddress(shipment.receiver)}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(shipment.status)}`}>
-                    {ShipmentStatus[shipment.status]}
-                  </span>
+                  <div className="flex items-center space-x-4">
+                    <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(shipment.status)}`}>
+                      {ShipmentStatus[shipment.status]}
+                    </span>
+                    <Link
+                      to={`/track/${shipment.id}`}
+                      className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                    >
+                      Track
+                    </Link>
+                  </div>
                 </div>
               ))
             ) : (
