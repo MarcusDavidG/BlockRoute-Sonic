@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useBlockRoute } from '../../hooks/useBlockRoute'
 import { ShipmentStatus, type Location } from '../../config/contracts'
@@ -11,16 +11,28 @@ export default function TrackShipment() {
   const { useShipment, useTransitHistory } = useBlockRoute()
 
   // Always call hooks unconditionally
-  const shipment = useShipment(shipmentId ? BigInt(shipmentId) : BigInt(0))
-  const transitHistory = useTransitHistory(shipmentId ? BigInt(shipmentId) : BigInt(0))
+  // Validate shipmentId to avoid invalid calls
+  const validShipmentId = shipmentId && !isNaN(Number(shipmentId)) && Number(shipmentId) > 0 ? BigInt(shipmentId) : null
 
-  const handleTrackShipment = () => {
-    if (inputShipmentId.trim()) {
-      navigate(`/track/${inputShipmentId.trim()}`)
-    }
-  }
+  const shipment = useShipment(validShipmentId ?? BigInt(0))
+  const transitHistory = useTransitHistory(validShipmentId ?? BigInt(0))
 
-  if (!shipmentId) {
+  // State to trigger refetch for polling
+  const [refreshToggle, setRefreshToggle] = useState(false)
+
+  // Poll transit history every 10 seconds
+  useEffect(() => {
+    if (!validShipmentId) return
+    const interval = setInterval(() => {
+      setRefreshToggle((prev) => !prev)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [validShipmentId])
+
+  // Refetch transit history when refreshToggle changes
+  const transitHistoryData = useTransitHistory(validShipmentId ?? BigInt(0), { enabled: refreshToggle }).data || []
+
+  if (!shipmentId || !validShipmentId) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
         <div className="container mx-auto px-4 py-8">
@@ -36,7 +48,11 @@ export default function TrackShipment() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
               <button
-                onClick={handleTrackShipment}
+                onClick={() => {
+                  if (inputShipmentId) {
+                    navigate(`/track-shipment/${inputShipmentId}`)
+                  }
+                }}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
               >
                 Track Shipment
@@ -53,7 +69,7 @@ export default function TrackShipment() {
   }
 
   if (shipment.error || transitHistory.error) {
-    return <div>Error loading shipment data</div>
+    return <div>Error loading shipment data. Please check the shipment ID and try again.</div>
   }
 
   if (!shipment.data) {
@@ -61,7 +77,7 @@ export default function TrackShipment() {
   }
 
   // Fix: Convert BigInt to string for react-query serialization in transit history
-  const transitHistoryData = transitHistory.data?.map((location: Location) => ({
+  const transitHistoryDataFormatted = transitHistoryData?.map((location: Location) => ({
     ...location,
     timestamp: location.timestamp.toString(),
   })) || []
@@ -84,18 +100,18 @@ export default function TrackShipment() {
           <p className="mb-2">Estimated Delivery Date: {new Date(Number(shipmentData.estimatedDeliveryDate) * 1000).toLocaleDateString()}</p>
 
           <h3 className="text-lg font-semibold mt-6 mb-2">Transit History</h3>
-          {transitHistoryData.length > 0 ? (
+          {transitHistoryDataFormatted.length > 0 ? (
             <>
               <ul className="list-disc list-inside mb-6">
-                {transitHistoryData.map((location: Location, index: number) => (
+                {transitHistoryDataFormatted.map((location: Location, index: number) => (
                   <li key={index}>
                     {location.name} - {new Date(Number(location.timestamp) * 1000).toLocaleString()}
                   </li>
                 ))}
               </ul>
               {/* Map component to display shipment tracking */}
-              <div className="h-96 rounded-lg overflow-hidden">
-                <Map locations={transitHistoryData} />
+              <div className="h-96 rounded-lg overflow-hidden relative w-full">
+                <Map locations={transitHistoryDataFormatted} className="absolute inset-0" />
               </div>
             </>
           ) : (
