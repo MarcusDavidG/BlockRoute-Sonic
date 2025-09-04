@@ -8,14 +8,14 @@ import { Suspense, lazy } from 'react'
 import { Home } from './pages/Home'
 
 // Lazy load other pages
-const CreateShipment = lazy(() => import('./pages/CreateShipment').then(module => ({ 
-  default: module.default 
+const CreateShipment = lazy(() => import('./pages/CreateShipment').then(module => ({
+  default: module.default
 })))
-const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ 
-  default: module.default 
+const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({
+  default: module.default
 })))
-const TrackShipment = lazy(() => import('./pages/TrackShipment').then(module => ({ 
-  default: module.default 
+const TrackShipment = lazy(() => import('./pages/TrackShipment').then(module => ({
+  default: module.default
 })))
 
 // Loading component for page transitions
@@ -40,6 +40,7 @@ function App() {
               <Route path="/create" element={<CreateShipment />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/track" element={<TrackShipment />} />
+              <Route path="/track/:shipmentId" element={<TrackShipment />} />
             </Routes>
           </Suspense>
         </main>

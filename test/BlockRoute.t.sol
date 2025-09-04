@@ -209,12 +209,13 @@ contract BlockRouteTest is Test {
         vm.stopPrank();
     }
 
-    function testFail_UnauthorizedQualityCheck() public {
+    function test_RevertWhen_UnauthorizedQualityCheck() public {
         // First create a shipment
         test_CreateShipment();
 
         // Try to perform quality check with unauthorized account
         vm.prank(manufacturer);
+        vm.expectRevert();
         blockRoute.performQualityCheck(
             1,
             true,
@@ -223,10 +224,10 @@ contract BlockRouteTest is Test {
         );
     }
 
-    function testFail_UnauthorizedDisputeResolution() public {
+    function test_RevertWhen_UnauthorizedDisputeResolution() public {
         // First create a shipment and raise dispute
         test_QualityCheck();
-        
+
         vm.prank(carrier);
         uint256 disputeId = blockRoute.raiseDispute(
             1,
@@ -235,6 +236,7 @@ contract BlockRouteTest is Test {
 
         // Try to resolve dispute with unauthorized account
         vm.prank(manufacturer);
+        vm.expectRevert();
         blockRoute.resolveDispute(
             disputeId,
             "Unauthorized resolution"
@@ -243,22 +245,58 @@ contract BlockRouteTest is Test {
 
     function test_PauseAndUnpause() public {
         vm.startPrank(admin);
-        
+
         blockRoute.pause();
         assertTrue(blockRoute.paused());
-        
+
         blockRoute.unpause();
         assertFalse(blockRoute.paused());
-        
+
         vm.stopPrank();
     }
 
-    function testFail_CreateShipmentWhenPaused() public {
+    function test_RevertWhen_CreateShipmentWhenPaused() public {
         // Pause the contract
         vm.prank(admin);
         blockRoute.pause();
 
         // Try to create shipment while paused
-        test_CreateShipment();
+        vm.startPrank(manufacturer);
+        vm.expectRevert();
+
+        IBlockRoute.Location memory origin = IBlockRoute.Location({
+            latitude: "40.7128",
+            longitude: "-74.0060",
+            name: "New York",
+            timestamp: block.timestamp,
+            updatedBy: manufacturer
+        });
+
+        IBlockRoute.Location memory destination = IBlockRoute.Location({
+            latitude: "34.0522",
+            longitude: "-118.2437",
+            name: "Los Angeles",
+            timestamp: block.timestamp,
+            updatedBy: manufacturer
+        });
+
+        uint256 estimatedDeliveryDate = block.timestamp + 7 days;
+        bytes32 documentsHash = keccak256("documents");
+
+        blockRoute.createShipment(
+            "Test Product",
+            "Test Description",
+            supplier,
+            carrier,
+            receiver,
+            origin,
+            destination,
+            estimatedDeliveryDate,
+            true, // isTemperatureSensitive
+            false, // isHumiditySensitive
+            documentsHash
+        );
+
+        vm.stopPrank();
     }
 }

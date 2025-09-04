@@ -29,6 +29,14 @@
 - [x] Update frontend with deployed contract address
 - [x] Verify wallet connection works with Sonic Blaze
 
+### Migration to Thirdweb
+- [x] Migrate frontend from wagmi to Thirdweb
+- [x] Update wallet connection components
+- [x] Configure Sonic Blaze Testnet in Thirdweb
+- [x] Update contract interaction hooks
+- [x] Add Thirdweb client ID configuration
+- [x] Test frontend startup and basic functionality
+
 ## 📋 Remaining Tasks
 
 ### Documentation

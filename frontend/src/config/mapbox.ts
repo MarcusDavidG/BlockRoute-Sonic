@@ -1,4 +1,4 @@
-import mapboxgl from 'mapbox-gl'
+
 
 export const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoibWFyY3VzZGF2aWRnIiwiYSI6ImNscnlxZGVtZjBhbmQya3BnZGJxZGJwbGsifQ.Hs7jAZPHGBHG5K_Qw_qPrw'
 

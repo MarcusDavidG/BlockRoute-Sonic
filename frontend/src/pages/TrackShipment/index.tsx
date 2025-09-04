@@ -1,237 +1,108 @@
-import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useBlockRoute } from '../../hooks/useBlockRoute'
-import { WalletButton } from '../../components/shared/ConnectWallet'
-import { ShipmentStatus } from '../../config/contracts'
-import { MapLoading, MapError, MapNoData } from '../../components/shared/MapLoading'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-
-// Custom marker icons
-const originIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-})
-
-const destinationIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-})
-
-// Map bounds adjuster component
-function MapBounds({ coordinates }: { coordinates: [number, number][] }) {
-  const map = useMap()
-
-  useEffect(() => {
-    if (coordinates.length > 0) {
-      const bounds = L.latLngBounds(coordinates.map(coord => L.latLng(coord[0], coord[1])))
-      map.fitBounds(bounds, { padding: [50, 50] })
-
-      // Draw the route line
-      const routeLine = L.polyline(coordinates, {
-        color: '#f97316', // orange-500
-        weight: 3,
-        opacity: 0.8,
-        dashArray: '10, 10' // Creates a dashed line
-      }).addTo(map)
-
-      return () => {
-        map.removeLayer(routeLine)
-      }
-    }
-  }, [coordinates, map])
-
-  return null
-}
+import { ShipmentStatus, type Location } from '../../config/contracts'
+import Map from '../../components/shared/Map'
 
 export default function TrackShipment() {
-  const [shipmentId, setShipmentId] = useState('')
-  const [isTracking, setIsTracking] = useState(false)
-  const { address, useShipment, useTransitHistory } = useBlockRoute()
+  const { shipmentId } = useParams<{ shipmentId: string }>()
+  const navigate = useNavigate()
+  const [inputShipmentId, setInputShipmentId] = useState('')
+  const { useShipment, useTransitHistory } = useBlockRoute()
 
-  // Get shipment data
-  const { 
-    data: shipment,
-    isLoading: isLoadingShipment,
-    error: shipmentError 
-  } = useShipment(isTracking ? BigInt(shipmentId) : 0n)
+  // Always call hooks unconditionally
+  const shipment = useShipment(shipmentId ? BigInt(shipmentId) : BigInt(0))
+  const transitHistory = useTransitHistory(shipmentId ? BigInt(shipmentId) : BigInt(0))
 
-  // Get transit history
-  const {
-    isLoading: isLoadingHistory,
-    error: historyError
-  } = useTransitHistory(isTracking ? BigInt(shipmentId) : 0n)
-
-  const handleTrackShipment = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsTracking(true)
+  const handleTrackShipment = () => {
+    if (inputShipmentId.trim()) {
+      navigate(`/track/${inputShipmentId.trim()}`)
+    }
   }
 
-  const handleReset = () => {
-    setIsTracking(false)
-  }
-
-  if (!address) {
+  if (!shipmentId) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center p-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Connect Your Wallet
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Please connect your wallet to track shipments
-          </p>
-          <WalletButton />
+      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+        <div className="container mx-auto px-4 py-8">
+          <h1 className="text-2xl font-bold mb-4">Track Shipment</h1>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 max-w-md mx-auto">
+            <h2 className="text-xl font-semibold mb-4">Enter Shipment ID</h2>
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={inputShipmentId}
+                onChange={(e) => setInputShipmentId(e.target.value)}
+                placeholder="Enter shipment ID (e.g., 1, 2, 3...)"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+              <button
+                onClick={handleTrackShipment}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+              >
+                Track Shipment
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
+  if (shipment.isLoading || transitHistory.isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (shipment.error || transitHistory.error) {
+    return <div>Error loading shipment data</div>
+  }
+
+  if (!shipment.data) {
+    return <div>Shipment not found</div>
+  }
+
+  // Fix: Convert BigInt to string for react-query serialization in transit history
+  const transitHistoryData = transitHistory.data?.map((location: Location) => ({
+    ...location,
+    timestamp: location.timestamp.toString(),
+  })) || []
+
+  // Fix: Convert BigInt to string for react-query serialization in shipment data
+  const shipmentData = {
+    ...shipment.data,
+    id: shipment.data.id.toString(),
+    estimatedDeliveryDate: shipment.data.estimatedDeliveryDate.toString(),
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-      {!isTracking ? (
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-md mx-auto">
-            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-8">
-              <h1 className="text-2xl font-bold text-orange-400 mb-6 text-center">
-                Track Your Shipment
-              </h1>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-4">Track Shipment</h1>
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">{shipmentData.productName}</h2>
+          <p className="mb-2">Description: {shipmentData.description}</p>
+          <p className="mb-2">Status: {ShipmentStatus[shipmentData.status]}</p>
+          <p className="mb-2">Estimated Delivery Date: {new Date(Number(shipmentData.estimatedDeliveryDate) * 1000).toLocaleDateString()}</p>
 
-              {(shipmentError || historyError) && (
-                <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 rounded">
-                  Error: {shipmentError?.message || historyError?.message}
-                </div>
-              )}
-
-              <form onSubmit={handleTrackShipment} className="space-y-6">
-                <div>
-                  <label htmlFor="shipmentId" className="block text-sm font-medium mb-2">
-                    Shipment ID
-                  </label>
-                  <input
-                    type="text"
-                    id="shipmentId"
-                    value={shipmentId}
-                    onChange={(e) => setShipmentId(e.target.value)}
-                    className="w-full p-3 bg-white dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 
-                             text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 
-                             focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    placeholder="Enter your shipment ID"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-orange-500 text-white p-3 rounded font-bold 
-                           hover:bg-orange-600 transition-colors disabled:bg-gray-400"
-                >
-                  Track Shipment
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="h-screen flex flex-col">
-          {/* Shipment Info Bar */}
-          <div className="bg-gray-100 dark:bg-gray-800 p-4">
-            <div className="container mx-auto flex justify-between items-center">
-              <div>
-                <h2 className="text-lg font-bold">Shipment #{shipmentId}</h2>
-                {shipment && (
-                  <>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Status: {ShipmentStatus[shipment.status]}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Product: {shipment.productName}
-                    </p>
-                  </>
-                )}
+          <h3 className="text-lg font-semibold mt-6 mb-2">Transit History</h3>
+          {transitHistoryData.length > 0 ? (
+            <>
+              <ul className="list-disc list-inside mb-6">
+                {transitHistoryData.map((location: Location, index: number) => (
+                  <li key={index}>
+                    {location.name} - {new Date(Number(location.timestamp) * 1000).toLocaleString()}
+                  </li>
+                ))}
+              </ul>
+              {/* Map component to display shipment tracking */}
+              <div className="h-96 rounded-lg overflow-hidden">
+                <Map locations={transitHistoryData} />
               </div>
-              <button
-                onClick={handleReset}
-                className="bg-orange-500 px-4 py-2 rounded hover:bg-orange-600"
-              >
-                Track Another
-              </button>
-            </div>
-          </div>
-
-          {/* Map Container */}
-          <div className="flex-grow relative">
-            <div className="absolute inset-0">
-              {shipment && (
-                <MapContainer
-                  key={`map-${shipmentId}`}
-                  className="h-full w-full"
-                  center={[0, 0]}
-                  zoom={2}
-                  scrollWheelZoom={true}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-                  {/* Origin Marker */}
-                  <Marker 
-                    position={[
-                      parseFloat(shipment.origin.latitude),
-                      parseFloat(shipment.origin.longitude)
-                    ]}
-                    icon={originIcon}
-                  >
-                    <Popup>
-                      <div className="p-2">
-                        <h3 className="font-bold">Origin</h3>
-                        <p>{shipment.origin.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(Number(shipment.origin.timestamp)).toLocaleString()}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
-
-                  {/* Destination Marker */}
-                  <Marker 
-                    position={[
-                      parseFloat(shipment.destination.latitude),
-                      parseFloat(shipment.destination.longitude)
-                    ]}
-                    icon={destinationIcon}
-                  >
-                    <Popup>
-                      <div className="p-2">
-                        <h3 className="font-bold">Destination</h3>
-                        <p>{shipment.destination.name}</p>
-                        <p className="text-sm text-gray-500">
-                          ETA: {new Date(Number(shipment.estimatedDeliveryDate)).toLocaleString()}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
-
-                  {/* Map bounds adjuster and route line */}
-                  <MapBounds coordinates={[
-                    [parseFloat(shipment.origin.latitude), parseFloat(shipment.origin.longitude)],
-                    [parseFloat(shipment.destination.latitude), parseFloat(shipment.destination.longitude)]
-                  ]} />
-                </MapContainer>
-              )}
-            </div>
-            {(isLoadingShipment || isLoadingHistory) && <MapLoading />}
-            {shipmentError && <MapError message={shipmentError.message} />}
-            {historyError && <MapError message={historyError.message} />}
-            {!isLoadingShipment && !shipment && <MapNoData />}
-          </div>
+            </>
+          ) : (
+            <p>No transit history available</p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
